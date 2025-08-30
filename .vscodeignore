@@ -1,0 +1,24 @@
+**/.git/**
+**/.github/**
+**/.vscode/**
+**/*.map
+**/*.ts
+**/*.tsx
+**/node_modules/**
+**/out/test/**
+**/test/**
+**/coverage/**
+**/.DS_Store
+**/.env*
+
+# --- packaging hygiene ---
+.vscode/**
+.vscode-test/**
+src/**
+tsconfig.json
+.vscodeignore.bak
+.gitignore
+**/*.map
+**/*.ts
+**/*.ts.map
+node_modules/**

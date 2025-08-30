@@ -1,0 +1,86 @@
+{
+  "name": "vscodium-marketplace-toggle",
+  "displayName": "Extension Marketplace Switcher",
+  "description": "Switch extension gallery endpoints (Open VSX, Microsoft, or custom).",
+  "publisher": "jacob-ae",
+  "version": "0.1.0",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onStartupFinished",
+    "onCommand:gallery.switchOpenVSX",
+    "onCommand:gallery.switchMicrosoft",
+    "onCommand:gallery.switchCustom",
+    "onCommand:gallery.openProductJson",
+    "onCommand:gallery.revertLastBackup",
+    "onCommand:gallery.forceRestart",
+    "onCommand:gallery.switcherQuickPick"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "gallery.switchOpenVSX",
+        "title": "Extension Marketplace Switcher: Switch to Open VSX"
+      },
+      {
+        "command": "gallery.switchMicrosoft",
+        "title": "Extension Marketplace Switcher: Switch to Microsoft Marketplace"
+      },
+      {
+        "command": "gallery.switchCustom",
+        "title": "Extension Marketplace Switcher: Set custom gallery endpoints…"
+      },
+      {
+        "command": "gallery.openProductJson",
+        "title": "Extension Marketplace Switcher: Open product.json"
+      },
+      {
+        "command": "gallery.revertLastBackup",
+        "title": "Extension Marketplace Switcher: Revert product.json from latest backup"
+      },
+      {
+        "command": "gallery.forceRestart",
+        "title": "Extension Marketplace Switcher: Quit App"
+      },
+      {
+        "command": "gallery.switcherQuickPick",
+        "title": "Extension Marketplace Switcher: Switch…"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p .",
+    "vscode:prepublish": "npm run compile",
+    "package": "vsce package",
+    "vsix": "npm run package",
+    "ovsx:publish": "ovsx publish --packagePath $(ls -t *.vsix | head -n1)",
+    "clean": "rimraf out *.vsix"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.0.0",
+    "ovsx": "^0.9.2",
+    "rimraf": "^6.0.0",
+    "typescript": "^5.5.0"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jacob-ae/vscode-extension-marketplace-switcher.git"
+  },
+  "homepage": "https://github.com/jacob-ae/vscode-extension-marketplace-switcher#readme",
+  "bugs": {
+    "url": "https://github.com/jacob-ae/vscode-extension-marketplace-switcher/issues"
+  },
+  "icon": "images/ems-icon.png",
+  "galleryBanner": {
+    "color": "#1f2937",
+    "theme": "dark"
+  }
+}

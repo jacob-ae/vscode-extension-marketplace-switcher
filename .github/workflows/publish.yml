@@ -1,0 +1,121 @@
+name: One-Click Publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish_mode:
+        description: "Choose release mode"
+        type: choice
+        options:
+          - Release only
+          - Release + Open VSX
+          - Dry run (build only, no push)
+        default: Release only
+      bump:
+        description: "Version bump"
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+          - none
+        default: patch
+
+permissions:
+  contents: write   # push version bump + create release
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate package.json
+        run: node -e "JSON.parse(require('fs').readFileSync('package.json','utf8')); console.log('package.json OK')"
+        
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install deps
+        run: |
+          if [ -f package-lock.json ]; then
+            if npm ci; then
+              echo "npm ci OK"
+            else
+              echo "npm ci failed, falling back to npm install"
+              npm install
+            fi
+          else
+            echo "No package-lock.json found; using npm install"
+            npm install
+          fi
+
+      # Conditionally bump version (patch/minor/major)
+      - name: Bump version
+        if: ${{ inputs.bump != 'none' && inputs.publish_mode != 'Dry run (build only, no push)' }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          npm version "${{ inputs.bump }}" -m "ci: release %s [skip ci]"
+
+      # SAFE: write to GITHUB_OUTPUT via Node (no shell quoting traps)
+      - name: Get version
+        id: getver
+        run: |
+          node -e "console.log('version=' + require('./package.json').version)" >> "$GITHUB_OUTPUT"
+
+      # If user selected no bump but still wants a release, create a tag for the existing version.
+      - name: Create tag for current version (when bump == none)
+        if: ${{ inputs.bump == 'none' && inputs.publish_mode != 'Dry run (build only, no push)' }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if ! git rev-parse "v${{ steps.getver.outputs.version }}" >/dev/null 2>&1; then
+            git tag -a "v${{ steps.getver.outputs.version }}" -m "ci: release v${{ steps.getver.outputs.version }} [skip ci]"
+          else
+            echo "Tag v${{ steps.getver.outputs.version }} already exists; skipping tag creation"
+          fi
+
+      - name: Build extension
+        run: |
+          npm run compile
+          npx @vscode/vsce package
+
+      # If we bumped a version, push commit + tag to default branch
+      - name: Push commit & tag
+        if: ${{ inputs.publish_mode != 'Dry run (build only, no push)' && inputs.bump != 'none' }}
+        run: git push origin HEAD:main --follow-tags
+
+      # If we created a tag in the 'none' branch above, push that tag
+      - name: Push tag (for bump == none)
+        if: ${{ inputs.bump == 'none' && inputs.publish_mode != 'Dry run (build only, no push)' }}
+        run: git push origin "v${{ steps.getver.outputs.version }}"
+
+      # DRY RUN: upload the built VSIX as an artifact you can download
+      - name: Upload VSIX artifact (dry run)
+        if: ${{ inputs.publish_mode == 'Dry run (build only, no push)' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: vsix-dry-run
+          path: "*.vsix"
+          retention-days: 7
+
+      - name: Create GitHub Release
+        if: ${{ inputs.publish_mode != 'Dry run (build only, no push)' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.getver.outputs.version }}
+          name: v${{ steps.getver.outputs.version }}
+          files: "*.vsix"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish to Open VSX
+        if: ${{ inputs.publish_mode == 'Release + Open VSX' }}
+        run: npx ovsx publish -p "$OVSX_PAT"
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
