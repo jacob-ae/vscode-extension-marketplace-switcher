@@ -20,22 +20,8 @@ This extension only edits `product.json → extensionsGallery`. Your settings/th
 
 ## Install (pick one)
 
-[![Open in VS Code](https://img.shields.io/badge/Open%20in-VS%20Code-23a8f2?logo=visualstudiocode&logoColor=white)](vscode:extension/jacob-ae.vscodium-marketplace-toggle)
-[![Open VSX](https://img.shields.io/badge/Install%20from-Open%20VSX-2e7d32?logo=openvsx&logoColor=white)](https://open-vsx.org/extension/jacob-ae/vscode-extension-marketplace-switcher)
-[![Download VSIX](https://img.shields.io/badge/Download-VSIX-555?logo=github)](https://github.com/jacob-ae/vscode-extension-marketplace-switcher/releases/latest)
-
-> The “Open in VS Code” deep link works inside VS Code; on the web use **Open VSX** or **Download VSIX**.
-
----
-
-## How to install (step by step)
-
-1. **From VSIX (easy test)**
-   - Go to **[Releases](https://github.com/jacob-ae/vscode-extension-marketplace-switcher/releases/latest)** and download the `.vsix`.
-   - In VS Code/VSCodium: **Extensions** → `⋯` → **Install from VSIX…** → choose the file.
-
-2. **From Open VSX** (once published)
-   - In Extensions, search **“Extension Marketplace Switcher”** or click the **Open VSX** button above.
+[![Open VSX](https://img.shields.io/badge/Install%20from-Open%20VSX-2e7d32?logo=openvsx&logoColor=white)](https://open-vsx.org/extension/jacob-ae/vscodium-marketplace-toggle)
+[![(Manual) Download VSIX](https://img.shields.io/badge/Download-VSIX-555?logo=github)](https://github.com/jacob-ae/vscode-extension-marketplace-switcher/releases/latest)
 
 ---
 
