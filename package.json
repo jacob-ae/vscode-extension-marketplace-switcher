@@ -3,7 +3,7 @@
   "displayName": "Extension Marketplace Switcher",
   "description": "Switch extension gallery endpoints (Open VSX, Microsoft, or custom).",
   "publisher": "jacob-ae",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "engines": {
     "vscode": "^1.85.0"
   },
