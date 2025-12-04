@@ -5,7 +5,7 @@
 </p>
 
 
-**Switch VSCodium/VS Code between the Open VSX registry, the Microsoft Marketplace, or a custom gallery.**  
+**Switch VSCodium/VS Code/Cursor between the Cursor marketplace, Open VSX registry, Microsoft Marketplace, or a custom gallery.**  
 This extension only edits `product.json → extensionsGallery`. Your settings/themes/extensions remain.
 > I built this on a whim after wanting VSCodium
 > but still being able to selectively pull in extensions from other marketplaces when needed.
@@ -30,11 +30,13 @@ This extension only edits `product.json → extensionsGallery`. Your settings/th
 - **Status Bar** (typically **bottom-left**): `$(extensions) Marketplace` — click to open a quick picker with all actions:
   - **Switch to Open VSX**
   - **Switch to Microsoft Marketplace**
+  - **Switch to Cursor Marketplace**
   - **Set custom gallery endpoints…**
 
 - **Command Palette** (⇧⌘P / Ctrl+Shift+P):
   - **Extension Marketplace Switcher: Switch to Open VSX**
   - **Extension Marketplace Switcher: Switch to Microsoft Marketplace**
+  - **Extension Marketplace Switcher: Switch to Cursor Marketplace**
   - **Extension Marketplace Switcher: Set custom gallery endpoints…**
   - **Extension Marketplace Switcher: Quit App** *(after switching, do this)*
   - **Extension Marketplace Switcher: Open product.json**

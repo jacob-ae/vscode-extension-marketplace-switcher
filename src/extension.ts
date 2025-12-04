@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { tmpdir } from 'os';
 
-type Gallery = { serviceUrl: string; itemUrl: string; cacheUrl?: string };
+type Gallery = { serviceUrl: string; itemUrl: string; cacheUrl?: string; [key: string]: unknown };
 
 // --- Known endpoints
 const OPENVSX: Gallery = {
@@ -17,8 +17,21 @@ const MS: Gallery = {
   cacheUrl: 'https://vscode.blob.core.windows.net/gallery/index'
 };
 
+const CURSOR: Gallery = {
+  galleryId: 'cursor',
+  serviceUrl: 'https://marketplace.cursorapi.com/_apis/public/gallery',
+  itemUrl: 'https://marketplace.cursorapi.com/items',
+  resourceUrlTemplate: 'https://marketplace.cursorapi.com/{publisher}/{name}/{version}/{path}',
+  controlUrl: 'https://api2.cursor.sh/extensions-control',
+  recommendationsUrl: '',
+  nlsBaseUrl: '',
+  publisherUrl: ''
+};
+
 // --- Platform-specific support dir
 function supportFolderFromAppName(appName: string): string {
+  const lower = appName.toLowerCase();
+  if (lower.includes('cursor')) return 'Cursor';
   if (appName.includes('Codium')) {
     return appName.includes('Insiders') ? 'VSCodium - Insiders' : 'VSCodium';
   }
@@ -108,7 +121,7 @@ function writeGallery(g: Gallery) {
 }
 
 // --- Status bar dynamic label
-type GalleryKind = 'openvsx' | 'ms' | 'custom' | 'unknown';
+type GalleryKind = 'openvsx' | 'ms' | 'cursor' | 'custom' | 'unknown';
 let statusBar: vscode.StatusBarItem;
 
 function detectCurrentGallery(): GalleryKind {
@@ -117,6 +130,7 @@ function detectCurrentGallery(): GalleryKind {
   const s = String(g.serviceUrl || '');
   if (s.includes('open-vsx.org')) return 'openvsx';
   if (s.includes('marketplace.visualstudio.com')) return 'ms';
+  if (s.includes('marketplace.cursorapi.com')) return 'cursor';
   if (s.startsWith('http')) return 'custom';
   return 'unknown';
 }
@@ -125,6 +139,7 @@ function labelFor(kind: GalleryKind): string {
   switch (kind) {
     case 'openvsx': return '$(extensions) Market: Open VSX';
     case 'ms':      return '$(extensions) Market: Microsoft';
+    case 'cursor':  return '$(extensions) Market: Cursor';
     case 'custom':  return '$(extensions) Market: Custom';
     default:        return '$(extensions) Market';
   }
@@ -148,7 +163,7 @@ async function forceQuitApp() {
   }
 }
 
-async function doSwitch(kind: 'openvsx' | 'ms' | 'custom') {
+async function doSwitch(kind: 'openvsx' | 'ms' | 'cursor' | 'custom') {
   try {
     if (kind === 'custom') {
       const serviceUrl = await vscode.window.showInputBox({ prompt: 'serviceUrl (e.g. https://...)' });
@@ -159,6 +174,8 @@ async function doSwitch(kind: 'openvsx' | 'ms' | 'custom') {
       const g: Gallery = { serviceUrl: serviceUrl!, itemUrl: itemUrl! };
       if (cacheUrl && isProbablyUrl(cacheUrl)) g.cacheUrl = cacheUrl;
       writeGallery(g);
+    } else if (kind === 'cursor') {
+      writeGallery(CURSOR);
     } else {
       writeGallery(kind === 'openvsx' ? OPENVSX : MS);
     }
@@ -212,6 +229,7 @@ async function showSwitcherQuickPick() {
   const items: PickItem[] = [
     { label: 'Switch to Open VSX', run: () => doSwitch('openvsx') },
     { label: 'Switch to Microsoft Marketplace', run: () => doSwitch('ms') },
+    { label: 'Switch to Cursor Marketplace', run: () => doSwitch('cursor') },
     { label: 'Set custom gallery endpoints…', run: () => doSwitch('custom') },
     { label: 'Quit App', run: () => forceQuitApp() },
     { label: 'Open product.json', run: () => openProductJson() },
@@ -230,6 +248,7 @@ export function activate(ctx: vscode.ExtensionContext) {
   ctx.subscriptions.push(
     vscode.commands.registerCommand('gallery.switchOpenVSX', () => doSwitch('openvsx')),
     vscode.commands.registerCommand('gallery.switchMicrosoft', () => doSwitch('ms')),
+    vscode.commands.registerCommand('gallery.switchCursor', () => doSwitch('cursor')),
     vscode.commands.registerCommand('gallery.switchCustom', () => doSwitch('custom')),
     vscode.commands.registerCommand('gallery.openProductJson', () => openProductJson()),
     vscode.commands.registerCommand('gallery.revertLastBackup', () => revertLastBackup()),
@@ -260,10 +279,12 @@ export function activate(ctx: vscode.ExtensionContext) {
     vscode.window.showInformationMessage(
       'Welcome to Extension Marketplace Switcher. Choose your preferred marketplace (requires full quit after switching).',
       'Open VSX',
-      'Microsoft'
+      'Microsoft',
+      'Cursor'
     ).then((selection?: string) => {
       if (selection === 'Open VSX') void doSwitch('openvsx');
       if (selection === 'Microsoft') void doSwitch('ms');
+      if (selection === 'Cursor') void doSwitch('cursor');
     });
   }
 }
