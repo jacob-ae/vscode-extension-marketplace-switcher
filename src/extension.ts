@@ -116,7 +116,42 @@ function writeJsonAtomic(filePath: string, data: any) {
 function writeGallery(g: Gallery) {
   const file = productJsonPath();
   const existing = readExistingProduct();
-  (existing as any).extensionsGallery = g;
+  const currentGallery = existing?.extensionsGallery || {};
+  
+  // For Cursor, we need to handle galleryId carefully
+  // Cursor uses galleryId to determine which marketplace to use
+  // If galleryId is "cursor", it may ignore serviceUrl
+  const isCursor = vscode.env.appName?.toLowerCase().includes('cursor') ?? false;
+  const isSwitchingToCursor = (g as any).galleryId === 'cursor';
+  
+  if (isCursor && isSwitchingToCursor) {
+    // Switching TO Cursor marketplace - preserve all Cursor fields
+    (existing as any).extensionsGallery = {
+      ...currentGallery,
+      ...g,
+      galleryId: 'cursor',
+      resourceUrlTemplate: currentGallery.resourceUrlTemplate || (g as any).resourceUrlTemplate,
+      controlUrl: currentGallery.controlUrl || (g as any).controlUrl,
+      recommendationsUrl: currentGallery.recommendationsUrl ?? (g as any).recommendationsUrl ?? '',
+      nlsBaseUrl: currentGallery.nlsBaseUrl ?? (g as any).nlsBaseUrl ?? '',
+      publisherUrl: currentGallery.publisherUrl ?? (g as any).publisherUrl ?? ''
+    };
+  } else {
+    // Switching to non-Cursor marketplace (or not Cursor app)
+    // CRITICAL: Remove galleryId and all Cursor-specific fields
+    // Cursor may use galleryId to override serviceUrl, so we must delete it
+    const newGallery: any = {
+      serviceUrl: g.serviceUrl,
+      itemUrl: g.itemUrl
+    };
+    if (g.cacheUrl) {
+      newGallery.cacheUrl = g.cacheUrl;
+    }
+    // Explicitly do NOT include galleryId, resourceUrlTemplate, controlUrl, etc.
+    // This ensures Cursor will use the serviceUrl instead of its hardcoded marketplace
+    (existing as any).extensionsGallery = newGallery;
+  }
+  
   writeJsonAtomic(file, existing);
 }
 
@@ -128,6 +163,12 @@ function detectCurrentGallery(): GalleryKind {
   const existing = readExistingProduct();
   const g = existing?.extensionsGallery || {};
   const s = String(g.serviceUrl || '');
+  const galleryId = (g as any).galleryId;
+  
+  // If galleryId is set to 'cursor', Cursor may ignore serviceUrl
+  // This is a known limitation - Cursor may read from app bundle first
+  if (galleryId === 'cursor') return 'cursor';
+  
   if (s.includes('open-vsx.org')) return 'openvsx';
   if (s.includes('marketplace.visualstudio.com')) return 'ms';
   if (s.includes('marketplace.cursorapi.com')) return 'cursor';
@@ -165,6 +206,8 @@ async function forceQuitApp() {
 
 async function doSwitch(kind: 'openvsx' | 'ms' | 'cursor' | 'custom') {
   try {
+    const isCursor = vscode.env.appName?.toLowerCase().includes('cursor') ?? false;
+    
     if (kind === 'custom') {
       const serviceUrl = await vscode.window.showInputBox({ prompt: 'serviceUrl (e.g. https://...)' });
       if (!isProbablyUrl(serviceUrl)) { vscode.window.showErrorMessage('Invalid serviceUrl. Must start with http(s)://'); return; }
@@ -182,8 +225,13 @@ async function doSwitch(kind: 'openvsx' | 'ms' | 'cursor' | 'custom') {
 
     refreshStatusBar();
 
+    let message = 'Marketplace switched. A FULL quit/relaunch is required. Reload Window is NOT enough.';
+    if (isCursor && kind !== 'cursor') {
+      message += '\n\n⚠️ Cursor Note: If Cursor still shows its curated shop after restart, it may be reading product.json from the app bundle. This is a Cursor limitation.';
+    }
+    
     const choice = await vscode.window.showInformationMessage(
-      'Marketplace switched. A FULL quit/relaunch is required. Reload Window is NOT enough.',
+      message,
       'Quit Now (required)'
     );
     if (choice) await forceQuitApp();
