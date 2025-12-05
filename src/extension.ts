@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { tmpdir } from 'os';
 import { showMarketplaceSearchForMarketplaceId, showDirectInstallForMarketplaceId } from './search-ui';
 
 type Gallery = { serviceUrl: string; itemUrl: string; cacheUrl?: string; [key: string]: unknown };
@@ -140,10 +139,21 @@ function writeJsonAtomic(filePath: string, data: any) {
     }
   }
 
-  // Atomic write
-  const tmp = path.join(tmpdir(), `product-${process.pid}-${ts}.json`);
+  // Atomic write - create temp file in same directory to avoid cross-device rename issues
+  const tmp = path.join(dir, `.product-${process.pid}-${ts}.json.tmp`);
   fs.writeFileSync(tmp, JSON.stringify(data, null, 2));
-  fs.renameSync(tmp, filePath);
+  try {
+    fs.renameSync(tmp, filePath);
+  } finally {
+    // Clean up temp file if rename failed
+    if (fs.existsSync(tmp)) {
+      try {
+        fs.unlinkSync(tmp);
+      } catch {
+        // Ignore cleanup errors
+      }
+    }
+  }
 }
 
 function writeGallery(g: Gallery) {

@@ -3,7 +3,7 @@
   "displayName": "Extension Marketplace Switcher",
   "description": "Switch extension gallery endpoints (Cursor, Open VSX, Microsoft, or custom). VSIX-based installation for Cursor. Product.json editing for VS Code/VSCodium.",
   "publisher": "jacob-ae",
-  "version": "1.4.3",
+  "version": "1.4.4",
   "engines": {
     "vscode": "^1.85.0"
   },

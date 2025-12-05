@@ -83,6 +83,7 @@ In Cursor, the extension uses **VSIX-based installation** instead of editing `pr
 ### General
 - Use of the Microsoft marketplace may be subject to Microsoft's terms; please review and ensure your use complies.
 - Both Open VSX and Microsoft VS Marketplace are fully supported for VSIX-based installation.
+- **Linux compatibility**: The extension now properly handles Linux systems where `/tmp` is mounted on a separate filesystem, preventing EXDEV cross-device rename errors when switching marketplaces.
 
 ---
 
