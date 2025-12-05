@@ -2,8 +2,10 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import { tmpdir } from 'os';
+import { showMarketplaceSearchForMarketplaceId, showDirectInstallForMarketplaceId } from './search-ui';
 
 type Gallery = { serviceUrl: string; itemUrl: string; cacheUrl?: string; [key: string]: unknown };
+type MarketplaceId = 'openvsx' | 'ms' | 'cursor';
 
 // --- Known endpoints
 const OPENVSX: Gallery = {
@@ -27,6 +29,37 @@ const CURSOR: Gallery = {
   nlsBaseUrl: '',
   publisherUrl: ''
 };
+
+// --- Cursor detection
+function isCursor(): boolean {
+  return vscode.env.appName.toLowerCase().includes('cursor');
+}
+
+// --- Configuration helpers
+function getDefaultMarketplace(): MarketplaceId {
+  const config = vscode.workspace.getConfiguration('marketplaceSwitcher');
+  const value = config.get<MarketplaceId>('defaultMarketplace', 'openvsx');
+  if (value === 'openvsx' || value === 'ms' || value === 'cursor') {
+    return value;
+  }
+  return 'openvsx';
+}
+
+async function setDefaultMarketplace(value: MarketplaceId): Promise<void> {
+  const config = vscode.workspace.getConfiguration('marketplaceSwitcher');
+  await config.update('defaultMarketplace', value, vscode.ConfigurationTarget.Global);
+}
+
+async function showMarketplaceSearchForCurrentDefault(): Promise<void> {
+  const id = getDefaultMarketplace();
+  if (id === 'cursor') {
+    vscode.window.showInformationMessage(
+      'The default marketplace is set to "cursor". Use the built-in Extensions view, or switch to openvsx/ms to use Marketplace Switcher search.'
+    );
+    return;
+  }
+  await showMarketplaceSearchForMarketplaceId(id);
+}
 
 // --- Platform-specific support dir
 function supportFolderFromAppName(appName: string): string {
@@ -160,29 +193,51 @@ type GalleryKind = 'openvsx' | 'ms' | 'cursor' | 'custom' | 'unknown';
 let statusBar: vscode.StatusBarItem;
 
 function detectCurrentGallery(): GalleryKind {
-  const existing = readExistingProduct();
-  const g = existing?.extensionsGallery || {};
-  const s = String(g.serviceUrl || '');
-  const galleryId = (g as any).galleryId;
-  
-  // If galleryId is set to 'cursor', Cursor may ignore serviceUrl
-  // This is a known limitation - Cursor may read from app bundle first
-  if (galleryId === 'cursor') return 'cursor';
-  
-  if (s.includes('open-vsx.org')) return 'openvsx';
-  if (s.includes('marketplace.visualstudio.com')) return 'ms';
-  if (s.includes('marketplace.cursorapi.com')) return 'cursor';
-  if (s.startsWith('http')) return 'custom';
-  return 'unknown';
+  if (isCursor()) {
+    const id = getDefaultMarketplace();
+    if (id === 'openvsx') return 'openvsx';
+    if (id === 'ms') return 'ms';
+    if (id === 'cursor') return 'cursor';
+    return 'unknown';
+  } else {
+    const existing = readExistingProduct();
+    const g = existing?.extensionsGallery || {};
+    const s = String(g.serviceUrl || '');
+    const galleryId = (g as any).galleryId;
+    
+    // If galleryId is set to 'cursor', Cursor may ignore serviceUrl
+    // This is a known limitation - Cursor may read from app bundle first
+    if (galleryId === 'cursor') return 'cursor';
+    
+    if (s.includes('open-vsx.org')) return 'openvsx';
+    if (s.includes('marketplace.visualstudio.com')) return 'ms';
+    if (s.includes('marketplace.cursorapi.com')) return 'cursor';
+    if (s.startsWith('http')) return 'custom';
+    return 'unknown';
+  }
+}
+
+function labelForMarketplaceId(id: MarketplaceId): string {
+  switch (id) {
+    case 'openvsx': return 'Open VSX';
+    case 'ms': return 'VS Marketplace';
+    case 'cursor': return 'Cursor';
+  }
 }
 
 function labelFor(kind: GalleryKind): string {
-  switch (kind) {
-    case 'openvsx': return '$(extensions) Market: Open VSX';
-    case 'ms':      return '$(extensions) Market: Microsoft';
-    case 'cursor':  return '$(extensions) Market: Cursor';
-    case 'custom':  return '$(extensions) Market: Custom';
-    default:        return '$(extensions) Market';
+  if (isCursor()) {
+    const id = getDefaultMarketplace();
+    const label = labelForMarketplaceId(id);
+    return `$(extensions) Marketplace: ${label}`;
+  } else {
+    switch (kind) {
+      case 'openvsx': return '$(extensions) Market: Open VSX';
+      case 'ms':      return '$(extensions) Market: Microsoft';
+      case 'cursor':  return '$(extensions) Market: Cursor';
+      case 'custom':  return '$(extensions) Market: Custom';
+      default:        return '$(extensions) Market';
+    }
   }
 }
 
@@ -204,10 +259,8 @@ async function forceQuitApp() {
   }
 }
 
-async function doSwitch(kind: 'openvsx' | 'ms' | 'cursor' | 'custom') {
+async function switchViaProductJson(kind: 'openvsx' | 'ms' | 'cursor' | 'custom') {
   try {
-    const isCursor = vscode.env.appName?.toLowerCase().includes('cursor') ?? false;
-    
     if (kind === 'custom') {
       const serviceUrl = await vscode.window.showInputBox({ prompt: 'serviceUrl (e.g. https://...)' });
       if (!isProbablyUrl(serviceUrl)) { vscode.window.showErrorMessage('Invalid serviceUrl. Must start with http(s)://'); return; }
@@ -225,11 +278,7 @@ async function doSwitch(kind: 'openvsx' | 'ms' | 'cursor' | 'custom') {
 
     refreshStatusBar();
 
-    let message = 'Marketplace switched. A FULL quit/relaunch is required. Reload Window is NOT enough.';
-    if (isCursor && kind !== 'cursor') {
-      message += '\n\n⚠️ Cursor Note: If Cursor still shows its curated shop after restart, it may be reading product.json from the app bundle. This is a Cursor limitation.';
-    }
-    
+    const message = 'Marketplace switched. A FULL quit/relaunch is required. Reload Window is NOT enough.';
     const choice = await vscode.window.showInformationMessage(
       message,
       'Quit Now (required)'
@@ -237,6 +286,26 @@ async function doSwitch(kind: 'openvsx' | 'ms' | 'cursor' | 'custom') {
     if (choice) await forceQuitApp();
   } catch (err: any) {
     vscode.window.showErrorMessage(`Failed: ${err?.message ?? err}`);
+  }
+}
+
+async function doSwitch(kind: 'openvsx' | 'ms' | 'cursor' | 'custom') {
+  if (isCursor()) {
+    if (kind === 'custom') {
+      vscode.window.showInformationMessage('Custom marketplace endpoints are not supported in Cursor. Use Open VSX or VS Marketplace instead.');
+      return;
+    }
+    if (kind === 'openvsx' || kind === 'ms' || kind === 'cursor') {
+      await setDefaultMarketplace(kind);
+      if (kind !== 'cursor') {
+        await showMarketplaceSearchForCurrentDefault();
+      } else {
+        refreshStatusBar();
+        vscode.window.showInformationMessage('Default marketplace set to Cursor. Use the built-in Extensions view.');
+      }
+    }
+  } else {
+    await switchViaProductJson(kind);
   }
 }
 
@@ -294,14 +363,56 @@ async function showSwitcherQuickPick() {
 export function activate(ctx: vscode.ExtensionContext) {
   // Commands
   ctx.subscriptions.push(
-    vscode.commands.registerCommand('gallery.switchOpenVSX', () => doSwitch('openvsx')),
-    vscode.commands.registerCommand('gallery.switchMicrosoft', () => doSwitch('ms')),
-    vscode.commands.registerCommand('gallery.switchCursor', () => doSwitch('cursor')),
+    vscode.commands.registerCommand('gallery.switchOpenVSX', async () => {
+      if (isCursor()) {
+        await setDefaultMarketplace('openvsx');
+        await showMarketplaceSearchForCurrentDefault();
+      } else {
+        await switchViaProductJson('openvsx');
+      }
+    }),
+    vscode.commands.registerCommand('gallery.switchMicrosoft', async () => {
+      if (isCursor()) {
+        await setDefaultMarketplace('ms');
+        await showMarketplaceSearchForCurrentDefault();
+      } else {
+        await switchViaProductJson('ms');
+      }
+    }),
+    vscode.commands.registerCommand('gallery.switchCursor', async () => {
+      if (isCursor()) {
+        await setDefaultMarketplace('cursor');
+        refreshStatusBar();
+        vscode.window.showInformationMessage('Default marketplace set to Cursor. Use the built-in Extensions view.');
+      } else {
+        await switchViaProductJson('cursor');
+      }
+    }),
     vscode.commands.registerCommand('gallery.switchCustom', () => doSwitch('custom')),
     vscode.commands.registerCommand('gallery.openProductJson', () => openProductJson()),
     vscode.commands.registerCommand('gallery.revertLastBackup', () => revertLastBackup()),
     vscode.commands.registerCommand('gallery.forceRestart', () => forceQuitApp()),
     vscode.commands.registerCommand('gallery.switcherQuickPick', () => showSwitcherQuickPick()),
+    vscode.commands.registerCommand('gallery.installFromMarketplace', async () => {
+      const id = getDefaultMarketplace();
+      if (id === 'cursor') {
+        vscode.window.showInformationMessage(
+          'Default marketplace is "cursor". Use the built-in Extensions view, or switch to openvsx/ms to use Marketplace Switcher search.'
+        );
+        return;
+      }
+      await showMarketplaceSearchForMarketplaceId(id);
+    }),
+    vscode.commands.registerCommand('gallery.installById', async () => {
+      const id = getDefaultMarketplace();
+      if (id === 'cursor') {
+        vscode.window.showInformationMessage(
+          'Default marketplace is "cursor". Use the built-in Extensions view, or switch to openvsx/ms to use Marketplace Switcher search.'
+        );
+        return;
+      }
+      await showDirectInstallForMarketplaceId(id);
+    }),
   );
 
   // Status bar
@@ -312,12 +423,17 @@ export function activate(ctx: vscode.ExtensionContext) {
   ctx.subscriptions.push(statusBar);
   refreshStatusBar();
 
-  // Update label when product.json is saved or when window refocuses
+  // Update label when product.json is saved, when window refocuses, or when config changes
   ctx.subscriptions.push(
     vscode.workspace.onDidSaveTextDocument(doc => {
       if (doc.uri.fsPath === productJsonPath()) refreshStatusBar();
     }),
-    vscode.window.onDidChangeWindowState(() => refreshStatusBar())
+    vscode.window.onDidChangeWindowState(() => refreshStatusBar()),
+    vscode.workspace.onDidChangeConfiguration(e => {
+      if (e.affectsConfiguration('marketplaceSwitcher.defaultMarketplace')) {
+        refreshStatusBar();
+      }
+    })
   );
 
   // First-run prompt (once)

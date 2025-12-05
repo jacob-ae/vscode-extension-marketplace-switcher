@@ -1,9 +1,9 @@
 {
   "name": "vscodium-marketplace-toggle",
   "displayName": "Extension Marketplace Switcher",
-  "description": "Switch extension gallery endpoints (Cursor, Open VSX, Microsoft, or custom).",
+  "description": "Switch extension gallery endpoints (Cursor, Open VSX, Microsoft, or custom). VSIX-based installation for Cursor. Product.json editing for VS Code/VSCodium.",
   "publisher": "jacob-ae",
-  "version": "1.4.2",
+  "version": "1.4.3",
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -12,9 +12,26 @@
   ],
   "main": "./out/extension.js",
   "activationEvents": [
-    "onStartupFinished"
+    "onStartupFinished",
+    "onCommand:gallery.switchOpenVSX",
+    "onCommand:gallery.switchMicrosoft",
+    "onCommand:gallery.switchCursor",
+    "onCommand:gallery.installFromMarketplace",
+    "onCommand:gallery.installById"
   ],
   "contributes": {
+    "configuration": {
+      "id": "marketplaceSwitcher",
+      "title": "Marketplace Switcher",
+      "properties": {
+        "marketplaceSwitcher.defaultMarketplace": {
+          "type": "string",
+          "enum": ["openvsx", "ms", "cursor"],
+          "default": "openvsx",
+          "description": "Default marketplace used by Marketplace Switcher. In Cursor, this controls which marketplace is used for VSIX-based search and install commands. 'cursor' means use Cursor's built-in marketplace only."
+        }
+      }
+    },
     "commands": [
       {
         "command": "gallery.switchOpenVSX",
@@ -47,6 +64,14 @@
       {
         "command": "gallery.switcherQuickPick",
         "title": "Extension Marketplace Switcher: Switch…"
+      },
+      {
+        "command": "gallery.installFromMarketplace",
+        "title": "Marketplace Switcher: Install from Marketplace"
+      },
+      {
+        "command": "gallery.installById",
+        "title": "Marketplace Switcher: Install by ID"
       }
     ]
   },

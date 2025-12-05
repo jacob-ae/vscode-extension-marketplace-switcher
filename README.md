@@ -6,7 +6,12 @@
 
 
 **Switch VSCodium/VS Code/Cursor between the Cursor marketplace, Open VSX registry, Microsoft Marketplace, or a custom gallery.**  
-This extension only edits `product.json → extensionsGallery`. Your settings/themes/extensions remain.
+
+**VS Code/VSCodium**: Edits `product.json → extensionsGallery` to switch the built-in Extensions view.  
+**Cursor**: Uses VSIX-based installation to install extensions from any marketplace without modifying Cursor's internal configuration.
+
+Your settings/themes/extensions remain unchanged.
+
 > I built this on a whim after wanting VSCodium
 > but still being able to selectively pull in extensions from other marketplaces when needed.
 > Hope you enjoy it! :) **Jacob **
@@ -27,6 +32,8 @@ This extension only edits `product.json → extensionsGallery`. Your settings/th
 
 ## How to use
 
+### VS Code / VSCodium
+
 - **Status Bar** (typically **bottom-left**): `$(extensions) Marketplace` — click to open a quick picker with all actions:
   - **Switch to Open VSX**
   - **Switch to Microsoft Marketplace**
@@ -38,6 +45,8 @@ This extension only edits `product.json → extensionsGallery`. Your settings/th
   - **Extension Marketplace Switcher: Switch to Microsoft Marketplace**
   - **Extension Marketplace Switcher: Switch to Cursor Marketplace**
   - **Extension Marketplace Switcher: Set custom gallery endpoints…**
+  - **Extension Marketplace Switcher: Install from Marketplace** *(search and install via VSIX)*
+  - **Extension Marketplace Switcher: Install by ID** *(install by publisher.name via VSIX)*
   - **Extension Marketplace Switcher: Quit App** *(after switching, do this)*
   - **Extension Marketplace Switcher: Open product.json**
   - **Extension Marketplace Switcher: Revert product.json from latest backup**
@@ -45,12 +54,35 @@ This extension only edits `product.json → extensionsGallery`. Your settings/th
 > After switching you **must fully quit and relaunch** the app.  
 > A normal **Reload Window** is **not enough**. Choose **Quit App** when prompted, then reopen.
 
+### Cursor
+
+In Cursor, the extension uses **VSIX-based installation** instead of editing `product.json`:
+
+- **Status Bar**: Shows the current default marketplace (Open VSX, VS Marketplace, or Cursor)
+- **Switch commands**: Set your preferred marketplace and immediately open a search UI to install extensions
+- **Install commands**: 
+  - **Install from Marketplace**: Search and install extensions from your default marketplace
+  - **Install by ID**: Install a specific extension by ID (e.g., `vadimcn.vscode-lldb`)
+
+> In Cursor, switching marketplaces **does not require a restart**. The extension uses VSIX downloads to install extensions directly, bypassing Cursor's locked marketplace configuration.
+
 ---
 
 ## Notes
 
-- Only `extensionsGallery` is changed; your data folder is untouched, so settings/themes/extensions persist.
-- Use of the Microsoft marketplace may be subject to Microsoft’s terms; please review and ensure your use complies.
+### VS Code / VSCodium
+- Only `extensionsGallery` in `product.json` is changed; your data folder is untouched, so settings/themes/extensions persist.
+- After switching, you must fully quit and relaunch for changes to take effect.
+
+### Cursor
+- The extension does **not** modify Cursor's internal `product.json` or app bundle.
+- Extensions are installed via VSIX download, working around Cursor's marketplace restrictions.
+- No restart required when switching marketplaces or installing extensions.
+- The default marketplace preference is stored in extension settings and persists across sessions.
+
+### General
+- Use of the Microsoft marketplace may be subject to Microsoft's terms; please review and ensure your use complies.
+- Both Open VSX and Microsoft VS Marketplace are fully supported for VSIX-based installation.
 
 ---
 
